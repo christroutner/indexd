@@ -1,107 +1,145 @@
-let debug = require('./debug')('indexd:rpc')
+let debug = require("./debug")("indexd:rpc");
 
-function rpcd (rpc, method, params, done) {
-  debug(method, params)
+function rpcd(rpc, method, params, done) {
+  debug(method, params);
   rpc(method, params, (err, result) => {
-    if (err) debug(method, params, err)
-    if (err) return done(err)
+    if (err) debug(method, params, err);
+    if (err) return done(err);
 
-    done(null, result)
-  })
+    done(null, result);
+  });
 }
 
-function augment (tx) {
-  delete tx.hex
-  tx.txId = tx.txid
-  delete tx.txid
-  tx.vin.forEach((input) => {
-    input.prevTxId = input.txid
-    delete input.txid
-  })
-  tx.vout.forEach((output) => {
-    output.script = Buffer.from(output.scriptPubKey.hex, 'hex')
-    delete output.scriptPubKey
-    output.value = Math.round(output.value * 1e8)
-    output.vout = output.n
-    delete output.n
-  })
-  tx.ins = tx.vin
-  tx.outs = tx.vout
-  delete tx.vin
-  delete tx.vout
-  return tx
+function augment(tx) {
+  delete tx.hex;
+  tx.txId = tx.txid;
+  delete tx.txid;
+  tx.vin.forEach(input => {
+    input.prevTxId = input.txid;
+    delete input.txid;
+  });
+  tx.vout.forEach(output => {
+    output.script = Buffer.from(output.scriptPubKey.hex, "hex");
+    delete output.scriptPubKey;
+    output.value = Math.round(output.value * 1e8);
+    output.vout = output.n;
+    delete output.n;
+  });
+  tx.ins = tx.vin;
+  tx.outs = tx.vout;
+  delete tx.vin;
+  delete tx.vout;
+  return tx;
 }
 
-function block (rpc, blockId, done) {
-  rpcd(rpc, 'getblock', [blockId, 2], (err, block) => {
-    if (err) return done(err)
+function block(rpc, blockId, done) {
+  rpcd(rpc, "getblock", [blockId, 2], (err, block) => {
+    if (err) return done(err);
 
-    block.blockId = blockId
-    delete block.hash
-    block.nextBlockId = block.nextblockhash
-    delete block.nextblockhash
-    block.prevBlockId = block.previousblockhash
-    delete block.prevblockhash
-    block.medianTime = block.mediantime
-    delete block.mediantime
+    block.blockId = blockId;
+    delete block.hash;
+    block.nextBlockId = block.nextblockhash;
+    delete block.nextblockhash;
+    block.prevBlockId = block.previousblockhash;
+    delete block.prevblockhash;
+    block.medianTime = block.mediantime;
+    delete block.mediantime;
 
-    block.transactions = block.tx.map(t => augment(t))
-    delete block.tx
+    block.transactions = block.tx.map(t => augment(t));
+    delete block.tx;
 
-    done(null, block)
-  })
+    done(null, block);
+  });
 }
 
-function blockIdAtHeight (rpc, height, done) {
-  rpcd(rpc, 'getblockhash', [height], done)
+function blockIdAtHeight(rpc, height, done) {
+  rpcd(rpc, "getblockhash", [height], done);
 }
 
-function headerJSON (rpc, blockId, done) {
-  rpcd(rpc, 'getblockheader', [blockId, true], (err, header) => {
-    if (err) return done(err)
+function headerJSON(rpc, blockId, done) {
+  rpcd(rpc, "getblockheader", [blockId, true], (err, header) => {
+    if (err) return done(err);
 
-    header.blockId = blockId
-    delete header.hash
-    header.nextBlockId = header.nextblockhash
-    delete header.nextblockhash
+    header.blockId = blockId;
+    delete header.hash;
+    header.nextBlockId = header.nextblockhash;
+    delete header.nextblockhash;
 
-    done(null, header)
-  })
+    done(null, header);
+  });
 }
 
-function mempool (rpc, done) {
-  rpcd(rpc, 'getrawmempool', [false], done)
+function headerJSON2(rpc, blockId) {
+  return new Promise((resolves, rejects) => {
+    rpcd(rpc, "getblockheader", [blockId, true], (err, header) => {
+      if (err) return rejects(err);
+
+      header.blockId = blockId;
+      delete header.hash;
+      header.nextBlockId = header.nextblockhash;
+      delete header.nextblockhash;
+
+      // done(null, header);
+      return resolves(header);
+    });
+  });
 }
 
-function tip (rpc, done) {
-  rpcd(rpc, 'getchaintips', [], (err, tips) => {
-    if (err) return done(err)
-
-    let {
-      hash: blockId,
-      height
-    } = tips.filter(x => x.status === 'active').pop()
-
-    done(null, { blockId, height })
-  })
+function mempool(rpc, done) {
+  rpcd(rpc, "getrawmempool", [false], done);
 }
 
-function transaction (rpc, txId, next, forgiving) {
-  rpcd(rpc, 'getrawtransaction', [txId, true], (err, tx) => {
+function tip(rpc, done) {
+  rpcd(rpc, "getchaintips", [], (err, tips) => {
+    if (err) return done(err);
+
+    let { hash: blockId, height } = tips
+      .filter(x => x.status === "active")
+      .pop();
+
+    done(null, { blockId, height });
+  });
+}
+
+// Get the tip of the chain via RPC call to full node.
+function tip2(rpc) {
+  try {
+    return new Promise((resolves, rejects) => {
+      rpcd(rpc, "getchaintips", [], (err, tips) => {
+        if (err) return rejects(err);
+
+        let { hash: blockId, height } = tips
+          .filter(x => x.status === "active")
+          .pop();
+
+        // done(null, { blockId, height })
+        return resolves({ blockId, height });
+      });
+    });
+  } catch (err) {
+    console.error("Error in tip2");
+  }
+}
+
+function transaction(rpc, txId, next, forgiving) {
+  rpcd(rpc, "getrawtransaction", [txId, true], (err, tx) => {
     if (err) {
-      if (forgiving && /No such mempool or blockchain transaction/.test(err)) return next()
-      return next(err)
+      if (forgiving && /No such mempool or blockchain transaction/.test(err))
+        return next();
+      return next(err);
     }
 
-    next(null, augment(tx))
-  })
+    next(null, augment(tx));
+  });
 }
 
 module.exports = {
   block,
   blockIdAtHeight,
   headerJSON,
+  headerJSON2,
   mempool,
   tip,
+  tip2,
   transaction
-}
+};

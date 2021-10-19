@@ -14,7 +14,7 @@ const rpc = require("./rpc");
 let leveldown = require("leveldown");
 const db = leveldown(process.env.INDEXDB);
 
-const Indexd = require("../index");
+const Indexd = require("../index2");
 const indexd = new Indexd(db, rpc);
 
 function errorSink(err) {
