@@ -18,5 +18,9 @@
   },
   "scripts": {},
   "author": "Daniel Cousens",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "leveldown": "^6.1.0",
+    "yajrpc": "^1.4.4"
+  }
 }
