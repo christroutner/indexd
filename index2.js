@@ -35,6 +35,8 @@ class Indexd {
     };
   }
 
+  // Compile an array of indexing functions to execute, then execute them in
+  // parallel.
   tips(callback) {
     console.log("Entering tips");
     let tasks = {};
@@ -50,6 +52,7 @@ class Indexd {
     parallel(tasks, callback);
   }
 
+  // This is the main indexing function.
   // recurses until `nextBlockId` is falsy
   connectFrom(prevBlockId, blockId, callback) {
     this.tips((err, tips) => {
