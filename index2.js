@@ -36,12 +36,16 @@ class Indexd {
   }
 
   tips(callback) {
+    console.log("Entering tips");
     let tasks = {};
+
+    console.log("this.indexes: ", this.indexes);
 
     for (let indexName in this.indexes) {
       let index = this.indexes[indexName];
       tasks[indexName] = next => index.tip(this.db, next);
     }
+    console.log("tasks: ", tasks);
 
     parallel(tasks, callback);
   }
